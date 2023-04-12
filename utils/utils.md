@@ -1,0 +1,1 @@
+Contains helper functions that are used all over the project. 
