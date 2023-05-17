@@ -22,5 +22,7 @@ func New() http.Handler {
 	router.HandleFunc("/users/{id}", utils.UpdateUser).Methods("PUT")
 	router.HandleFunc("/users/{id}", utils.DeleteUser).Methods("DELETE")
 
+	router.HandleFunc("/auth/login", utils.Login).Methods("POST")
+
 	return router
 }
