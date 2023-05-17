@@ -2,13 +2,13 @@ package utils
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/todzuko/go-api/models"
 	"golang.org/x/crypto/bcrypt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 )
 
 func GetAllUsers(w http.ResponseWriter, r *http.Request) {
@@ -28,11 +28,13 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 		}
 		userResponses = append(userResponses, userResponse)
 	}
-	json.NewEncoder(w).Encode(userResponses)
+	err := json.NewEncoder(w).Encode(userResponses)
+	if err != nil {
+		return
+	}
 }
 
 func GetUser(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("In GetUser")
 	w.Header().Set("Content-Type", "application/json")
 
 	var user models.User
@@ -67,6 +69,10 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusBadRequest, "Validation Error")
 		return
 	}
+	if userWithEmailExists(input.Email) {
+		RespondWithError(w, http.StatusBadRequest, "User with such email already exists")
+		return
+	}
 	password := input.Password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -90,6 +96,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	id := mux.Vars(r)["id"]
+	idUint, _ := strconv.ParseUint(id, 10, 64)
 	var user models.User
 
 	if err := models.DB.Where("id = ?", id).First(&user).Error; err != nil {
@@ -107,6 +114,11 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		RespondWithError(w, http.StatusBadRequest, "Validation Error")
+		return
+	}
+	emailUserId := getUserIdByEmail(input.Email)
+	if emailUserId != 0 && emailUserId != uint(idUint) {
+		RespondWithError(w, http.StatusBadRequest, "User with such email already exists")
 		return
 	}
 	password := input.Password
@@ -139,4 +151,18 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 	json.NewEncoder(w).Encode(user)
 
+}
+
+func userWithEmailExists(email string) bool {
+	userId := getUserIdByEmail(email)
+	if userId == 0 {
+		return false
+	}
+	return true
+}
+
+func getUserIdByEmail(email string) uint {
+	var user models.User
+	models.DB.Where("email = ?", email).Select("id").First(&user)
+	return user.ID
 }
