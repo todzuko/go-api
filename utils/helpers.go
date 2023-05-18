@@ -2,8 +2,11 @@ package utils
 
 import (
 	"encoding/json"
+	"github.com/go-playground/validator/v10"
 	"net/http"
 )
+
+var validate *validator.Validate
 
 func RespondWithError(w http.ResponseWriter, code int, message string) {
 	respondWithJSON(w, code, map[string]string{"error": message})

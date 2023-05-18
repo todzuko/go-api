@@ -32,8 +32,6 @@ func GetQuest(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(quest)
 }
 
-var validate *validator.Validate
-
 type QuestInput struct {
 	Title       string `json:"title" validate:"required"`
 	Description string `json:"description" validate:"required"`
