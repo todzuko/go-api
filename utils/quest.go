@@ -4,9 +4,16 @@ import (
 	"encoding/json"
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
+	"github.com/todzuko/go-api/cache"
 	"github.com/todzuko/go-api/models"
 	"io/ioutil"
 	"net/http"
+)
+
+var questCache = cache.NewRedisCache(
+	"localhost:6379",
+	0,
+	10,
 )
 
 func GetAllQuests(w http.ResponseWriter, r *http.Request) {
@@ -22,11 +29,14 @@ func GetQuest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	id := mux.Vars(r)["id"]
-	var quest models.Quest
-
-	if err := models.DB.Where("id = ?", id).First(&quest).Error; err != nil {
-		RespondWithError(w, http.StatusNotFound, "Quest not found")
-		return
+	var quest *models.Quest
+	quest = questCache.Get(id)
+	if quest == nil {
+		if err := models.DB.Where("id = ?", id).First(&quest).Error; err != nil {
+			RespondWithError(w, http.StatusNotFound, "Quest not found")
+			return
+		}
+		questCache.Set(id, quest)
 	}
 
 	json.NewEncoder(w).Encode(quest)
